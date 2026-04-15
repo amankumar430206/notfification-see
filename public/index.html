@@ -2,91 +2,99 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live Dashboard • SSE Practice</title>
+    <title>SSE - User Specific Notifications</title>
     <style>
       body {
         font-family: system-ui;
-        padding: 20px;
         background: #0f172a;
         color: #e2e8f0;
+        padding: 20px;
       }
       #feed {
-        max-height: 70vh;
-        overflow-y: auto;
         background: #1e2937;
         padding: 15px;
         border-radius: 12px;
+        max-height: 60vh;
+        overflow-y: auto;
       }
       .event {
         padding: 12px;
-        margin: 8px 0;
+        margin: 10px 0;
         background: #334155;
         border-radius: 8px;
-      }
-      .event.order {
-        border-left: 4px solid #22c55e;
-      }
-      .event.payment {
-        border-left: 4px solid #a78bfa;
       }
     </style>
   </head>
   <body>
-    <h1>🔔 Real-Time Dashboard (SSE)</h1>
-    <div id="status" style="color: #22c55e">● Connected</div>
-
-    <div style="margin: 20px 0">
-      <input id="msg" placeholder="Type a message to broadcast" style="width: 60%; padding: 10px" />
-      <button onclick="sendEvent()">Broadcast Event</button>
+    <h1>🔔 Personal Live Notifications (SSE)</h1>
+    <div>
+      <label>Your User ID: <input id="userId" value="123" style="padding: 8px" /></label>
+      <button onclick="connect()">Connect</button>
     </div>
 
-    <h2>Live Activity Feed</h2>
+    <div id="status" style="margin: 10px 0; color: #22c55e">● Disconnected</div>
+
+    <h2>Your Personal Feed</h2>
     <div id="feed"></div>
 
+    <h3>Send Test Notification to User</h3>
+    <input id="targetUser" placeholder="Target User ID" value="123" style="padding: 8px" />
+    <input id="msg" placeholder="Message" style="padding: 8px; width: 300px" />
+    <button onclick="sendToUser()">Send to Specific User</button>
+
     <script>
+      let eventSource = null;
       const feed = document.getElementById("feed");
       const status = document.getElementById("status");
 
-      const eventSource = new EventSource("/events");
+      function connect() {
+        if (eventSource) eventSource.close();
 
-      eventSource.onopen = () => {
-        status.textContent = "● Connected (live updates enabled)";
-        status.style.color = "#22c55e";
-      };
+        const userId = document.getElementById("userId").value.trim();
+        if (!userId) return alert("Enter User ID");
 
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        eventSource = new EventSource(`/events?userId=${encodeURIComponent(userId)}`);
 
-        const div = document.createElement("div");
-        div.className = `event ${data.type}`;
-        div.innerHTML = `
-        <strong>${data.type.toUpperCase()}</strong> 
-        <span style="float:right; font-size:0.8em">${new Date(data.timestamp).toLocaleTimeString()}</span><br>
-        ${data.message}
-      `;
-        feed.prepend(div); // newest on top
+        eventSource.onopen = () => {
+          status.textContent = `● Connected as User ${userId}`;
+          status.style.color = "#22c55e";
+        };
 
-        // Auto-remove old messages (optional)
-        if (feed.children.length > 50) feed.removeChild(feed.lastChild);
-      };
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          const div = document.createElement("div");
+          div.className = "event";
+          div.innerHTML = `
+          <strong>${data.type.toUpperCase()}</strong> 
+          <small style="float:right">${new Date(data.timestamp).toLocaleTimeString()}</small><br>
+          ${data.message}
+          ${data.userId ? `<br><small>for user: ${data.userId}</small>` : ""}
+        `;
+          feed.prepend(div);
+        };
 
-      eventSource.onerror = () => {
-        status.textContent = "⚠️ Connection lost (reconnecting...)";
-        status.style.color = "#eab308";
-      };
+        eventSource.onerror = () => {
+          status.textContent = "⚠️ Connection error (reconnecting...)";
+          status.style.color = "#eab308";
+        };
+      }
 
-      // Send custom event
-      function sendEvent() {
-        const msg = document.getElementById("msg").value;
-        if (!msg) return;
+      function sendToUser() {
+        const targetUser = document.getElementById("targetUser").value.trim();
+        const message = document.getElementById("msg").value.trim();
+        if (!targetUser || !message) return;
 
-        fetch("/send-event", {
+        fetch("/send-to-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg }),
-        }).then(() => (document.getElementById("msg").value = ""));
+          body: JSON.stringify({ userId: targetUser, message }),
+        })
+          .then((r) => r.json())
+          .then(console.log);
       }
+
+      // Auto-connect with default userId on load
+      window.onload = () => connect();
     </script>
   </body>
 </html>
