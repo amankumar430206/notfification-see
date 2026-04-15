@@ -3,157 +3,234 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live Dashboard - React Style (CDN)</title>
+    <title>Live Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        background: #0f172a;
-        color: #e2e8f0;
-        padding: 20px;
-        max-width: 900px;
-        margin: 0 auto;
-      }
-      .container {
-        margin-bottom: 25px;
-      }
-      input,
-      button {
-        padding: 10px 12px;
-        margin: 5px;
-        border-radius: 6px;
-        border: none;
-        font-size: 15px;
-      }
-      input {
-        background: #1e2937;
-        color: white;
-        width: 180px;
-      }
-      button {
-        background: #3b82f6;
-        color: white;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #2563eb;
-      }
-      #status {
-        font-weight: bold;
-        padding: 8px 12px;
-        border-radius: 6px;
-        display: inline-block;
+        font-family: system-ui, sans-serif;
       }
       .event {
-        background: #1e2937;
-        padding: 14px;
-        margin: 10px 0;
-        border-radius: 8px;
-        border-left: 5px solid #3b82f6;
+        transition: all 0.2s;
       }
-      .connected {
-        background: #166534;
-        color: #86efac;
+      .event:hover {
+        transform: translateX(4px);
       }
-      .disconnected {
-        background: #7f1d1d;
-        color: #fda4af;
+      .modal {
+        animation: fadeInScale 0.2s ease-out forwards;
+      }
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
       }
     </style>
   </head>
-  <body>
-    <h1>🟢 Live Dashboard (User-Specific SSE)</h1>
+  <body class="bg-slate-950 text-slate-200">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 border-b border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-semibold text-blue-400">Live Dashboard</h1>
+      </div>
 
-    <div class="container">
-      <label
-        >Your User ID:
-        <input id="userId" type="text" value="123" />
-      </label>
-      <button onclick="connectSSE()">Connect</button>
-      <button onclick="disconnectSSE()">Disconnect</button>
+      <div class="flex items-center gap-8">
+        <!-- Dashboard Button -->
+        <button onclick="switchToDashboard()" class="px-5 py-2 text-sm font-medium hover:text-white transition-colors">
+          Dashboard
+        </button>
+
+        <!-- Notifications Button with Live Badge -->
+        <button
+          onclick="showNotificationsModal()"
+          class="flex items-center gap-2 px-5 py-2 text-sm font-medium hover:text-white transition-colors relative"
+        >
+          <span>Notifications</span>
+          <span
+            id="noti-badge"
+            class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center"
+          >
+            0
+          </span>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <input
+          id="userId"
+          type="text"
+          value="123"
+          class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm w-28 focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onclick="connectSSE()"
+          class="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-medium transition"
+        >
+          Connect
+        </button>
+        <button
+          onclick="disconnectSSE()"
+          class="bg-slate-700 hover:bg-slate-600 px-4 py-1.5 rounded-lg text-sm font-medium transition"
+        >
+          Disconnect
+        </button>
+      </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto p-8">
+      <!-- Dashboard Content -->
+      <div id="dashboard-content">
+        <h2 class="text-3xl font-bold mb-2">Welcome Back</h2>
+        <p class="text-slate-400 mb-8">Your real-time activity feed is ready.</p>
+
+        <div id="status" class="inline-flex items-center gap-2 bg-slate-800 px-5 py-2 rounded-xl text-sm">
+          ● Disconnected
+        </div>
+      </div>
     </div>
 
-    <div id="status" class="disconnected">● Disconnected</div>
+    <!-- Notifications Modal (Popup) -->
+    <div id="noti-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[100]">
+      <div class="modal bg-slate-900 w-full max-w-lg mx-4 rounded-2xl shadow-2xl overflow-hidden">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between border-b border-slate-700 px-6 py-5">
+          <h3 class="text-xl font-semibold flex items-center gap-2">
+            🛎️ Notifications
+            <span id="modal-count" class="text-xs bg-slate-700 px-2 py-0.5 rounded-full">0</span>
+          </h3>
+          <div class="flex gap-3">
+            <button onclick="clearNotifications()" class="text-slate-400 hover:text-white text-sm">Clear All</button>
+            <button onclick="hideNotificationsModal()" class="text-slate-400 hover:text-white text-2xl leading-none">
+              ×
+            </button>
+          </div>
+        </div>
 
-    <div class="container">
-      <h3>Send Notification to Specific User</h3>
-      <input id="targetUser" type="text" placeholder="Target User ID" value="123" />
-      <input id="message" type="text" placeholder="Type message here..." style="width: 320px" />
-      <button onclick="sendNotification()">Send to User</button>
+        <!-- Virtualized Feed Area (We'll simulate virtualization with scroll + limit) -->
+        <div id="modal-feed" class="max-h-[480px] overflow-y-auto p-6 space-y-4 bg-slate-950">
+          <!-- Notifications will be added here -->
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-slate-700 flex justify-end">
+          <button
+            onclick="hideNotificationsModal()"
+            class="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
-
-    <h2>Your Personal Live Feed</h2>
-    <div
-      id="feed"
-      style="
-        background: #1e2937;
-        padding: 20px;
-        border-radius: 10px;
-        min-height: 400px;
-        max-height: 70vh;
-        overflow-y: auto;
-      "
-    ></div>
 
     <script>
       let eventSource = null;
-      const feed = document.getElementById("feed");
+      let notifications = []; // Store all notifications
+      let unreadCount = 0;
+
+      const feedEl = document.getElementById("modal-feed");
+      const badgeEl = document.getElementById("noti-badge");
+      const modalCountEl = document.getElementById("modal-count");
       const statusEl = document.getElementById("status");
 
-      function updateStatus(connected) {
-        if (connected) {
-          statusEl.textContent = "● Connected - Receiving real-time updates";
-          statusEl.className = "connected";
+      function updateBadge() {
+        if (unreadCount > 0) {
+          badgeEl.textContent = unreadCount > 99 ? "99+" : unreadCount;
+          badgeEl.classList.remove("hidden");
         } else {
-          statusEl.textContent = "● Disconnected";
-          statusEl.className = "disconnected";
+          badgeEl.classList.add("hidden");
         }
+        modalCountEl.textContent = notifications.length;
+      }
+
+      function addNotification(data) {
+        notifications.unshift(data); // Add to top
+        unreadCount++;
+
+        // Limit to 100 notifications to prevent memory issues
+        if (notifications.length > 100) notifications.pop();
+
+        updateBadge();
+
+        // If modal is open, refresh the feed
+        if (!document.getElementById("noti-modal").classList.contains("hidden")) {
+          renderNotifications();
+        }
+      }
+
+      function renderNotifications() {
+        feedEl.innerHTML = "";
+
+        notifications.forEach((noti, index) => {
+          const div = document.createElement("div");
+          div.className = `event bg-slate-800 p-4 rounded-xl border border-slate-700`;
+          div.innerHTML = `
+          <div class="flex justify-between text-xs text-slate-400 mb-1">
+            <span class="font-medium uppercase">${(noti.type || "alert").toUpperCase()}</span>
+            <span>${new Date(noti.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <div class="text-slate-100">${noti.message}</div>
+          ${noti.userId ? `<div class="text-xs text-slate-500 mt-2">for user ${noti.userId}</div>` : ""}
+        `;
+          feedEl.appendChild(div);
+        });
+
+        if (notifications.length === 0) {
+          feedEl.innerHTML = `<p class="text-center text-slate-500 py-12">No notifications yet</p>`;
+        }
+      }
+
+      function showNotificationsModal() {
+        document.getElementById("noti-modal").classList.remove("hidden");
+        renderNotifications();
+        unreadCount = 0; // Mark as read when opening
+        updateBadge();
+      }
+
+      function hideNotificationsModal() {
+        document.getElementById("noti-modal").classList.add("hidden");
+      }
+
+      function clearNotifications() {
+        notifications = [];
+        unreadCount = 0;
+        updateBadge();
+        renderNotifications();
+      }
+
+      function switchToDashboard() {
+        hideNotificationsModal();
+        // You can expand dashboard content here if needed
       }
 
       function connectSSE() {
         const userId = document.getElementById("userId").value.trim();
-        if (!userId) {
-          alert("Please enter a valid User ID");
-          return;
-        }
+        if (!userId) return alert("Enter User ID");
 
         if (eventSource) eventSource.close();
 
-        const url = `/events?userId=${encodeURIComponent(userId)}`;
-        eventSource = new EventSource(url);
+        eventSource = new EventSource(`/events?userId=${encodeURIComponent(userId)}`);
 
         eventSource.onopen = () => {
-          updateStatus(true);
-          console.log(`✅ SSE Connected for user: ${userId}`);
+          statusEl.innerHTML = `● <span class="text-emerald-400">Connected</span>`;
+          statusEl.className =
+            "inline-flex items-center gap-2 bg-emerald-950 text-emerald-400 px-5 py-2 rounded-xl text-sm";
         };
 
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-
-            const div = document.createElement("div");
-            div.className = "event";
-            div.innerHTML = `
-            <strong>${(data.type || "NOTIFICATION").toUpperCase()}</strong> 
-            <small style="float:right; opacity:0.75;">
-              ${new Date(data.timestamp).toLocaleTimeString()}
-            </small><br><br>
-            ${data.message}
-            ${data.userId ? `<br><small style="opacity:0.6">→ User ${data.userId}</small>` : ""}
-          `;
-            feed.prepend(div);
-
-            if (feed.children.length > 40) feed.removeChild(feed.lastChild);
-          } catch (e) {
-            console.error("Parse error", e);
-          }
+            addNotification(data);
+          } catch (e) {}
         };
 
         eventSource.onerror = () => {
-          updateStatus(false);
-          console.log("SSE connection error - will try to reconnect...");
+          statusEl.innerHTML = `● Disconnected`;
+          statusEl.className = "inline-flex items-center gap-2 bg-slate-800 px-5 py-2 rounded-xl text-sm";
         };
       }
 
@@ -162,37 +239,19 @@
           eventSource.close();
           eventSource = null;
         }
-        updateStatus(false);
+        statusEl.innerHTML = `● Disconnected`;
+        statusEl.className = "inline-flex items-center gap-2 bg-slate-800 px-5 py-2 rounded-xl text-sm";
       }
 
-      function sendNotification() {
-        const targetUser = document.getElementById("targetUser").value.trim();
-        const message = document.getElementById("message").value.trim();
+      // Auto connect on load
+      window.onload = () => {
+        connectSSE();
+      };
 
-        if (!targetUser || !message) {
-          alert("Target User ID and Message are required");
-          return;
-        }
-
-        fetch("/send-to-user", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: targetUser,
-            message: message,
-            type: "notification",
-          }),
-        })
-          .then((r) => r.json())
-          .then((res) => {
-            console.log("✅ Sent:", res);
-            document.getElementById("message").value = "";
-          })
-          .catch((err) => console.error("Send failed:", err));
-      }
-
-      // Auto connect on page load
-      window.onload = connectSSE;
+      // Close modal when pressing ESC
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") hideNotificationsModal();
+      });
     </script>
   </body>
 </html>
